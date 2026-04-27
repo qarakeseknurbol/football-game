@@ -1,94 +1,122 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Head Soccer Fix", layout="centered")
+st.set_page_config(page_title="Messi vs Ronaldo: Head Soccer", layout="centered")
 st.title("⚽️ Head Soccer: Almaty Cup")
 
-# Чистый HTML5 Canvas без внешних библиотек
-game_html = """
-<div style="display: flex; flex-direction: column; align-items: center;">
-    <canvas id="gameCanvas" width="700" height="400" style="border:2px solid #000; background: #87CEEB;"></canvas>
-    <p>Управление: Месси (W,A,D) | Роналду (Стрелки)</p>
+# Ссылка на твой репозиторий для картинок
+# ВАЖНО: убедись, что твое имя пользователя в ссылке ниже правильное
+github_url = "https://raw.githubusercontent.com/qarakaseknurbol/marketing/main/"
+
+game_html = f"""
+<div style="display: flex; flex-direction: column; align-items: center; font-family: 'Arial Black', sans-serif;">
+    <div id="ui" style="display: flex; justify-content: space-between; width: 700px; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 10px 10px 0 0;">
+        <div id="timer">Time: 90s</div>
+        <div id="score" style="font-size: 24px;">Messi 0 : 0 Ronaldo</div>
+        <div id="round">Round: 1</div>
+    </div>
+    <canvas id="gameCanvas" width="700" height="400" style="border:3px solid #333; background: #87CEEB;"></canvas>
+    <p style="margin-top: 10px;"><b>Управление:</b> Месси (W,A,D) | Роналду (Стрелки)</p>
 </div>
 
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-let p1 = { x: 50, y: 300, w: 50, h: 70, color: "red", vy: 0, score: 0 };
-let p2 = { x: 600, y: 300, w: 50, h: 70, color: "blue", vy: 0, score: 0 };
-let ball = { x: 350, y: 200, r: 15, vx: 2, vy: 2 };
+// Загрузка картинок
+const messiImg = new Image(); messiImg.src = "{github_url}messi.png";
+const ronaldoImg = new Image(); ronaldoImg.src = "{github_url}ronaldo.png";
+const ballImg = new Image(); ballImg.src = "{github_url}ball.png";
+const bgImg = new Image(); bgImg.src = "{github_url}background.png";
+const goalImg = new Image(); goalImg.src = "{github_url}goal.png";
+
+let p1 = {{ x: 80, y: 310, w: 70, h: 80, vy: 0, s: 0 }};
+let p2 = {{ x: 550, y: 310, w: 70, h: 80, vy: 0, s: 0 }};
+let ball = {{ x: 350, y: 150, r: 20, vx: 3, vy: 0 }};
 let gravity = 0.6;
-let keys = {};
+let timeLeft = 90;
+let currentRound = 1;
+let keys = {{}};
 
-window.addEventListener("keydown", e => keys[e.code] = true);
-window.addEventListener("keyup", e => keys[e.code] = false);
+window.onkeydown = (e) => keys[e.code] = true;
+window.onkeyup = (e) => keys[e.code] = false;
 
-function update() {
-    // Движение P1 (W, A, D)
-    if (keys["KeyA"] && p1.x > 0) p1.x -= 5;
-    if (keys["KeyD"] && p1.x < 300) p1.x += 5;
-    if (keys["KeyW"] && p1.y === 330) p1.vy = -12;
+// Таймер
+setInterval(() => {{
+    if (timeLeft > 0) timeLeft--;
+    else if (currentRound < 3) {{ timeLeft = 90; currentRound++; reset(); }}
+}}, 1000);
 
-    // Движение P2 (Стрелки)
-    if (keys["ArrowLeft"] && p2.x > 350) p2.x -= 5;
-    if (keys["ArrowRight"] && p2.x < 650) p2.x += 5;
-    if (keys["ArrowUp"] && p2.y === 330) p2.vy = -12;
+function update() {{
+    // Messi (W, A, D)
+    if (keys["KeyA"] && p1.x > 0) p1.x -= 7;
+    if (keys["KeyD"] && p1.x < 300) p1.x += 7;
+    if (keys["KeyW"] && p1.y >= 310) p1.vy = -14;
 
-    // Физика игроков
+    // Ronaldo (Arrows)
+    if (keys["ArrowLeft"] && p2.x > 350) p2.x -= 7;
+    if (keys["ArrowRight"] && p2.x < 630) p2.x += 7;
+    if (keys["ArrowUp"] && p2.y >= 310) p2.vy = -14;
+
     p1.y += p1.vy; p1.vy += gravity;
     p2.y += p2.vy; p2.vy += gravity;
-    if (p1.y > 330) { p1.y = 330; p1.vy = 0; }
-    if (p2.y > 330) { p2.y = 330; p2.vy = 0; }
+    if (p1.y > 310) {{ p1.y = 310; p1.vy = 0; }}
+    if (p2.y > 310) {{ p2.y = 310; p2.vy = 0; }}
 
-    // Физика мяча
-    ball.x += ball.vx; ball.y += ball.vy; ball.vy += 0.3;
-    if (ball.y > 385) { ball.y = 385; ball.vy *= -0.8; }
-    if (ball.x < 0 || ball.x > 700) ball.vx *= -1;
+    ball.x += ball.vx; ball.y += ball.vy; ball.vy += 0.4;
+    if (ball.y > 370) {{ ball.y = 370; ball.vy *= -0.7; }}
+    if (ball.x < 15 || ball.x > 685) ball.vx *= -1;
 
-    // Столкновения с игроками
-    [p1, p2].forEach(p => {
-        if (ball.x > p.x && ball.x < p.x + p.w && ball.y > p.y && ball.y < p.y + p.h) {
-            ball.vy = -8;
-            ball.vx = (ball.x - (p.x + p.w/2)) * 0.5;
-        }
-    });
+    [p1, p2].forEach(p => {{
+        if (ball.x + 15 > p.x && ball.x - 15 < p.x + p.w && ball.y + 15 > p.y && ball.y - 15 < p.y + p.h) {{
+            ball.vy = -10;
+            ball.vx = (ball.x - (p.x + p.w/2)) * 0.7;
+        }}
+    }});
 
-    // Голы
-    if (ball.x < 20 && ball.y > 250) { p2.score++; resetBall(); }
-    if (ball.x > 680 && ball.y > 250) { p1.score++; resetBall(); }
-}
+    if (ball.x < 40 && ball.y > 250) {{ p2.s++; reset(); }}
+    if (ball.x > 660 && ball.y > 250) {{ p1.s++; reset(); }}
 
-function resetBall() {
-    ball.x = 350; ball.y = 100; ball.vx = 2; ball.vy = 0;
-}
+    document.getElementById("score").innerText = `Messi ${{p1.s}} : ${{p2.s}} Ronaldo`;
+    document.getElementById("timer").innerText = `Time: ${{timeLeft}}s`;
+    document.getElementById("round").innerText = `Round: ${{currentRound}}`;
+}}
 
-function draw() {
+function reset() {{
+    ball.x = 350; ball.y = 100; ball.vx = (Math.random() > 0.5 ? 4 : -4); ball.vy = 0;
+}}
+
+function draw() {{
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Трава и Ворота
-    ctx.fillStyle = "green"; ctx.fillRect(0, 390, 700, 10);
-    ctx.fillStyle = "white"; 
-    ctx.fillRect(0, 250, 10, 150); // Левые
-    ctx.fillRect(690, 250, 10, 150); // Правые
+    // Фон
+    if (bgImg.complete) ctx.drawImage(bgImg, 0, 0, 700, 400);
+    
+    // Трава
+    ctx.fillStyle = "rgba(0,150,0,0.3)"; ctx.fillRect(0, 380, 700, 20);
 
-    // Игроки (вместо фото пока блоки)
-    ctx.fillStyle = p1.color; ctx.fillRect(p1.x, p1.y, p1.w, p1.h);
-    ctx.fillStyle = p2.color; ctx.fillRect(p2.x, p2.y, p2.w, p2.h);
+    // Ворота
+    if (goalImg.complete) {{
+        ctx.drawImage(goalImg, 0, 230, 60, 160);
+        ctx.save();
+        ctx.translate(700, 0); ctx.scale(-1, 1);
+        ctx.drawImage(goalImg, 0, 230, 60, 160);
+        ctx.restore();
+    }}
+
+    // Футболисты
+    if (messiImg.complete) ctx.drawImage(messiImg, p1.x, p1.y, p1.w, p1.h);
+    if (ronaldoImg.complete) ctx.drawImage(ronaldoImg, p2.x, p2.y, p2.w, p2.h);
     
     // Мяч
-    ctx.fillStyle = "white"; ctx.beginPath();
-    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
-
-    // Счет
-    ctx.fillStyle = "black"; ctx.font = "30px Arial";
-    ctx.fillText(p1.score + " : " + p2.score, 320, 50);
+    if (ballImg.complete) ctx.drawImage(ballImg, ball.x-20, ball.y-20, 40, 40);
+    else {{ ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(ball.x, ball.y, 15, 0, Math.PI*2); ctx.fill(); }}
 
     update();
     requestAnimationFrame(draw);
-}
+}}
 draw();
 </script>
 """
 
-components.html(game_html, height=500)
+components.html(game_html, height=550)
