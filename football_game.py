@@ -1,119 +1,94 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Head Soccer GOAT", layout="centered")
-st.title("⚽️ Super Cup: Messi vs Ronaldo")
+st.set_page_config(page_title="Head Soccer Fix", layout="centered")
+st.title("⚽️ Head Soccer: Almaty Cup")
 
-game_code = """
-<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+# Чистый HTML5 Canvas без внешних библиотек
+game_html = """
+<div style="display: flex; flex-direction: column; align-items: center;">
+    <canvas id="gameCanvas" width="700" height="400" style="border:2px solid #000; background: #87CEEB;"></canvas>
+    <p>Управление: Месси (W,A,D) | Роналду (Стрелки)</p>
+</div>
+
 <script>
-let p1, p2, ball;
-let gravity = 0.6;
-let round = 1, timer = 90, score1 = 0, score2 = 0;
-let isGameOver = false;
-let messiImg, ronaldoImg, ballImg, bgImg, goalImg;
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 
-function preload() {
-  // Используем прямой путь. Если картинка не найдется, P5 просто выдаст ошибку в консоль, но НЕ зависнет
-  let url = 'https://raw.githubusercontent.com/qarakaseknurbol/marketing/main/';
-  messiImg = loadImage(url + 'messi.png', () => {}, () => { console.log('No Messi'); });
-  ronaldoImg = loadImage(url + 'ronaldo.png', () => {}, () => { console.log('No Ronaldo'); });
-  ballImg = loadImage(url + 'ball.png', () => {}, () => { console.log('No Ball'); });
-  bgImg = loadImage(url + 'background.png', () => {}, () => { console.log('No BG'); });
-  goalImg = loadImage(url + 'goal.png', () => {}, () => { console.log('No Goal'); });
+let p1 = { x: 50, y: 300, w: 50, h: 70, color: "red", vy: 0, score: 0 };
+let p2 = { x: 600, y: 300, w: 50, h: 70, color: "blue", vy: 0, score: 0 };
+let ball = { x: 350, y: 200, r: 15, vx: 2, vy: 2 };
+let gravity = 0.6;
+let keys = {};
+
+window.addEventListener("keydown", e => keys[e.code] = true);
+window.addEventListener("keyup", e => keys[e.code] = false);
+
+function update() {
+    // Движение P1 (W, A, D)
+    if (keys["KeyA"] && p1.x > 0) p1.x -= 5;
+    if (keys["KeyD"] && p1.x < 300) p1.x += 5;
+    if (keys["KeyW"] && p1.y === 330) p1.vy = -12;
+
+    // Движение P2 (Стрелки)
+    if (keys["ArrowLeft"] && p2.x > 350) p2.x -= 5;
+    if (keys["ArrowRight"] && p2.x < 650) p2.x += 5;
+    if (keys["ArrowUp"] && p2.y === 330) p2.vy = -12;
+
+    // Физика игроков
+    p1.y += p1.vy; p1.vy += gravity;
+    p2.y += p2.vy; p2.vy += gravity;
+    if (p1.y > 330) { p1.y = 330; p1.vy = 0; }
+    if (p2.y > 330) { p2.y = 330; p2.vy = 0; }
+
+    // Физика мяча
+    ball.x += ball.vx; ball.y += ball.vy; ball.vy += 0.3;
+    if (ball.y > 385) { ball.y = 385; ball.vy *= -0.8; }
+    if (ball.x < 0 || ball.x > 700) ball.vx *= -1;
+
+    // Столкновения с игроками
+    [p1, p2].forEach(p => {
+        if (ball.x > p.x && ball.x < p.x + p.w && ball.y > p.y && ball.y < p.y + p.h) {
+            ball.vy = -8;
+            ball.vx = (ball.x - (p.x + p.w/2)) * 0.5;
+        }
+    });
+
+    // Голы
+    if (ball.x < 20 && ball.y > 250) { p2.score++; resetBall(); }
+    if (ball.x > 680 && ball.y > 250) { p1.score++; resetBall(); }
 }
 
-function setup() {
-  createCanvas(800, 500);
-  p1 = new Player(100, messiImg, 65, 68, 87); 
-  p2 = new Player(width - 200, ronaldoImg, LEFT_ARROW, RIGHT_ARROW, UP_ARROW);
-  ball = new Ball();
+function resetBall() {
+    ball.x = 350; ball.y = 100; ball.vx = 2; ball.vy = 0;
 }
 
 function draw() {
-  // Фон: если картинка не загрузилась, будет небо
-  if (bgImg && bgImg.width > 1) { background(bgImg); } 
-  else { background(135, 206, 235); }
-  
-  // Трава
-  fill(34, 139, 34); rect(0, height - 30, width, 30);
-  
-  // Ворота
-  if (goalImg && goalImg.width > 1) {
-     image(goalImg, 0, height - 200, 80, 180);
-     push(); translate(width, height - 200); scale(-1,1);
-     image(goalImg, 0, 0, 80, 180); pop();
-  } else {
-     fill(255, 255, 255, 100); rect(0, height-200, 20, 170); rect(width-20, height-200, 20, 170);
-  }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Трава и Ворота
+    ctx.fillStyle = "green"; ctx.fillRect(0, 390, 700, 10);
+    ctx.fillStyle = "white"; 
+    ctx.fillRect(0, 250, 10, 150); // Левые
+    ctx.fillRect(690, 250, 10, 150); // Правые
 
-  if (!isGameOver) {
-    p1.update(); p2.update(); ball.update();
-    if (frameCount % 60 == 0 && timer > 0) timer--;
-    if (timer == 0) {
-      if (round < 3) { round++; timer = 90; resetLevel(); } 
-      else { isGameOver = true; }
-    }
-  }
+    // Игроки (вместо фото пока блоки)
+    ctx.fillStyle = p1.color; ctx.fillRect(p1.x, p1.y, p1.w, p1.h);
+    ctx.fillStyle = p2.color; ctx.fillRect(p2.x, p2.y, p2.w, p2.h);
+    
+    // Мяч
+    ctx.fillStyle = "white"; ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
 
-  p1.show(); p2.show(); ball.show();
-  ball.checkCol(p1); ball.checkCol(p2);
-  showUI();
+    // Счет
+    ctx.fillStyle = "black"; ctx.font = "30px Arial";
+    ctx.fillText(p1.score + " : " + p2.score, 320, 50);
+
+    update();
+    requestAnimationFrame(draw);
 }
-
-function resetLevel() {
-    p1.x = 100; p2.x = width - 200;
-    ball.x = width/2; ball.y = height/2;
-    ball.vx = 0; ball.vy = 0;
-}
-
-function showUI() {
-    fill(0, 0, 0, 120); rect(0, 0, width, 60);
-    fill(255); textAlign(CENTER); textSize(32);
-    text(score1 + " : " + score2, width/2, 40);
-    textSize(20); textAlign(LEFT); text("Round: " + round, 20, 35);
-    textAlign(RIGHT); text("Time: " + timer + "s", width - 20, 35);
-}
-
-class Player {
-  constructor(x, img, l, r, u) {
-    this.x = x; this.y = height - 130; this.w = 90; this.h = 110;
-    this.img = img; this.vy = 0; this.l = l; this.r = r; this.u = u;
-  }
-  show() {
-    if (this.img && this.img.width > 1) { image(this.img, this.x, this.y, this.w, this.h); } 
-    else { fill(this.l == 65 ? 'red' : 'blue'); rect(this.x, this.y, 60, 60); }
-  }
-  update() {
-    if (keyIsDown(this.l)) this.x -= 8;
-    if (keyIsDown(this.r)) this.x += 8;
-    if (keyIsDown(this.u) && this.y >= height - 130) this.vy = -15;
-    this.y += this.vy; this.vy += gravity;
-    this.y = constrain(this.y, 0, height - 130);
-    this.x = constrain(this.x, 0, width - this.w);
-  }
-}
-
-class Ball {
-  constructor() { this.x = width/2; this.y = height/2; this.vx = 0; this.vy = 0; this.d = 40; }
-  show() {
-    if (ballImg && ballImg.width > 1) { image(ballImg, this.x - 20, this.y - 20, 40, 40); } 
-    else { fill(255); ellipse(this.x, this.y, this.d); }
-  }
-  update() {
-    this.x += this.vx; this.y += this.vy;
-    this.vy += gravity * 0.5; this.vx *= 0.99;
-    if (this.y > height - 45) { this.y = height - 45; this.vy *= -0.7; }
-    if (this.x < 20 || this.x > width - 20) { this.vx *= -1; }
-    if (this.x < 50 && this.y > height - 200) { score2++; resetLevel(); }
-    if (this.x > width - 50 && this.y > height - 200) { score1++; resetLevel(); }
-  }
-  checkCol(p) {
-    if (this.x > p.x && this.x < p.x + p.w && this.y > p.y && this.y < p.y + p.h) {
-      this.vy = -10; this.vx = (this.x - (p.x + p.w/2)) * 0.6;
-    }
-  }
-}
+draw();
 </script>
 """
-components.html(game_code, height=550, width=850)
+
+components.html(game_html, height=500)
