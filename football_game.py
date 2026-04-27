@@ -10,35 +10,38 @@ game_code = """
 <script>
 let p1, p2, ball;
 let gravity = 0.6;
-let round = 1;
-let timer = 90;
-let score1 = 0;
-let score2 = 0;
+let round = 1, timer = 90, score1 = 0, score2 = 0;
 let isGameOver = false;
 
 let messiImg, ronaldoImg, ballImg, bgImg, goalImg;
 
 function preload() {
-  // Исправили расширения файлов согласно твоему скриншоту
-  messiImg = loadImage('messi.png');
-  ronaldoImg = loadImage('ronaldo.png');
-  ballImg = loadImage('ball.png');
-  bgImg = loadImage('background.png'); // Было .jpg, стало .png
-  goalImg = loadImage('goal.png');
+  // Используем прямые ссылки на сырые файлы из GitHub (Raw)
+  // ВАЖНО: Замени 'qarakaseknurbol' на свое имя пользователя, если оно другое
+  let baseUrl = 'https://raw.githubusercontent.com/qarakaseknurbol/marketing/main/';
+  
+  messiImg = loadImage(baseUrl + 'messi.png');
+  ronaldoImg = loadImage(baseUrl + 'ronaldo.png');
+  ballImg = loadImage(baseUrl + 'ball.png');
+  bgImg = loadImage(baseUrl + 'background.png');
+  goalImg = loadImage(baseUrl + 'goal.png');
 }
 
 function setup() {
-  createCanvas(800, 500);
+  let canvas = createCanvas(800, 500);
   p1 = new Player(100, messiImg, 65, 68, 87); 
   p2 = new Player(width - 200, ronaldoImg, LEFT_ARROW, RIGHT_ARROW, UP_ARROW);
   ball = new Ball();
 }
 
 function draw() {
-  if (bgImg) { background(bgImg); } else { background(135, 206, 235); }
+  if (bgImg && bgImg.width > 1) { background(bgImg); } 
+  else { background(135, 206, 235); }
   
-  // Рисуем ворота
-  if (goalImg) {
+  fill(34, 139, 34, 150);
+  rect(0, height - 30, width, 30);
+  
+  if (goalImg && goalImg.width > 1) {
      image(goalImg, 0, height - 200, 80, 180);
      push();
      translate(width, height - 200);
@@ -48,10 +51,7 @@ function draw() {
   }
 
   if (!isGameOver) {
-    p1.update();
-    p2.update();
-    ball.update();
-    
+    p1.update(); p2.update(); ball.update();
     if (frameCount % 60 == 0 && timer > 0) timer--;
     if (timer == 0) {
       if (round < 3) { round++; timer = 90; resetLevel(); } 
@@ -59,11 +59,8 @@ function draw() {
     }
   }
 
-  p1.show();
-  p2.show();
-  ball.show();
-  ball.checkCol(p1);
-  ball.checkCol(p2);
+  p1.show(); p2.show(); ball.show();
+  ball.checkCol(p1); ball.checkCol(p2);
   showUI();
 }
 
@@ -76,14 +73,10 @@ function resetLevel() {
 function showUI() {
     fill(0, 0, 0, 120);
     rect(0, 0, width, 60);
-    fill(255);
-    textAlign(CENTER);
-    textSize(32);
-    text(`${score1} : ${score2}`, width/2, 40);
-    textSize(20);
-    textAlign(LEFT); text(`Round: ${round}`, 20, 35);
-    textAlign(RIGHT); text(`Time: ${timer}s`, width - 20, 35);
-    
+    fill(255); textAlign(CENTER); textSize(32);
+    text(score1 + " : " + score2, width/2, 40);
+    textSize(20); textAlign(LEFT); text("Round: " + round, 20, 35);
+    textAlign(RIGHT); text("Time: " + timer + "s", width - 20, 35);
     if (isGameOver) {
         fill(0, 150); rect(0,0, width, height);
         fill(255); textAlign(CENTER); textSize(60);
@@ -101,15 +94,14 @@ class Player {
     this.l = l; this.r = r; this.u = u;
   }
   show() {
-    if (this.img) { image(this.img, this.x, this.y, this.w, this.h); } 
+    if (this.img && this.img.width > 1) { image(this.img, this.x, this.y, this.w, this.h); } 
     else { fill(200); rect(this.x, this.y, this.w, this.h); }
   }
   update() {
     if (keyIsDown(this.l)) this.x -= 8;
     if (keyIsDown(this.r)) this.x += 8;
     if (keyIsDown(this.u) && this.y >= height - 130) this.vy = -15;
-    this.y += this.vy;
-    this.vy += gravity;
+    this.y += this.vy; this.vy += gravity;
     this.y = constrain(this.y, 0, height - 130);
     this.x = constrain(this.x, 0, width - this.w);
   }
@@ -118,7 +110,7 @@ class Player {
 class Ball {
   constructor() { this.x = width/2; this.y = height/2; this.vx = 0; this.vy = 0; this.d = 40; }
   show() {
-    if (ballImg) { image(ballImg, this.x - 20, this.y - 20, 40, 40); } 
+    if (ballImg && ballImg.width > 1) { image(ballImg, this.x - 20, this.y - 20, 40, 40); } 
     else { fill(255); ellipse(this.x, this.y, this.d); }
   }
   update() {
@@ -126,7 +118,6 @@ class Ball {
     this.vy += gravity * 0.5; this.vx *= 0.99;
     if (this.y > height - 45) { this.y = height - 45; this.vy *= -0.7; }
     if (this.x < 20 || this.x > width - 20) { this.vx *= -1; }
-    
     if (this.x < 50 && this.y > height - 200) { score2++; resetLevel(); }
     if (this.x > width - 50 && this.y > height - 200) { score1++; resetLevel(); }
   }
